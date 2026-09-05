@@ -19,7 +19,7 @@ Scope: Native Apple Silicon LAN screen sharing with upstream feature mapping, di
 - [x] G4: Native UI opens and actual screen capture reaches browser
   EVIDENCE: 2026-09-05 user-authorized loopback test displayed live ScreenCaptureKit frames in the browser; pause/resume, fullscreen/exit and server stop/reconnect were observed. The final rebuilt app window also opened successfully. Details and later ad-hoc-signature TCC caveat are in docs/VALIDATION.md.
 - [x] G5: Public GitHub repository and downloadable release are reachable
-  EVIDENCE: GitHub API verified public repo AndyJuang/ScreenTaskMac, tag v0.1.1 exactly at commit 2cea031, published non-draft latest Release, arm64 ZIP digest 4072cb7d57eef3d4094593bab8b7171d810c04966861a11895e40b8ba842227c, checksum asset, and passing GitHub Actions run 33939408940.
+  EVIDENCE: GitHub API verified public repo AndyJuang/ScreenTaskMac, tag v0.1.2 exactly at commit 31d9058, published non-draft latest Release, icon-bearing arm64 ZIP digest 17531f575530b7e88c99f814ebf67c7e1e0d2bf68ff9c3d5b06679311f79634d, checksum asset, and passing GitHub Actions run 33939814003.
 - [x] G6: Feature differences, setup, license and handoff are recorded
   EVIDENCE: README.md, docs/FEATURES.md, docs/VALIDATION.md, NOTICE, LICENSE, AI_MEMORY.md and tasks/2026-09-05-initial-port.md record usage, feature parity, limits, GPL attribution, architecture and handoff.
 - [x] G7: Designed ScreenTask icon is packaged as the app's complete macOS icon set

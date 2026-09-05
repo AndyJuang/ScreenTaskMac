@@ -9,6 +9,7 @@
 
 - Five regression groups: routing / frame readiness; Basic authentication on every route including malformed credentials; malformed and duplicate HTTP headers; HEAD / Content-Length / no-store; actual IPv4 subnet restriction with positive and negative controls.
 - Release app: arm64 Mach-O, Info.plist validation, deep strict ad-hoc code-signature validation, ZIP with SHA-256 checksum.
+- Designed icon source is committed as a 1254 × 1254 RGBA PNG. The build creates all macOS 16–1024 px representations, packages `AppIcon.icns`, and verifies the icon file plus `CFBundleIconFile` metadata before signing.
 - Real loopback integration: app copied to a temporary installation path, synthetic JPEG response, public/private modes, 48 requests over 12 concurrent workers per mode, HEAD, forbidden paths, unsupported methods, oversized/malformed headers, process termination closes listener.
 - Synthetic mode does not invoke screen capture.
 
