@@ -28,16 +28,35 @@ public struct HTTPResponse {
     public let type: String
     public let body: Data
     public var headers: [String: String] = [:]
+    /// A multipart/x-mixed-replace response carries no Content-Length: the body is the frames
+    /// written afterwards, and the response ends when the connection closes.
+    public var streaming = false
     public init(_ status: Int, type: String = "text/plain; charset=utf-8", body: Data = Data()) {
         self.status = status; self.type = type; self.body = body
     }
-    public func encoded(headOnly: Bool = false) -> Data {
+    public func encoded(headOnly: Bool = false, keepAlive: Bool = false) -> Data {
         let reasons = [200: "OK", 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found", 405: "Method Not Allowed", 431: "Request Header Fields Too Large", 503: "Service Unavailable"]
-        var text = "HTTP/1.1 \(status) \(reasons[status] ?? "Error")\r\nContent-Type: \(type)\r\nContent-Length: \(body.count)\r\nConnection: close\r\nCache-Control: no-store, max-age=0\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nX-Frame-Options: DENY\r\n"
+        var text = "HTTP/1.1 \(status) \(reasons[status] ?? "Error")\r\nContent-Type: \(type)\r\n"
+        if !streaming { text += "Content-Length: \(body.count)\r\n" }
+        text += "Connection: \(keepAlive ? "keep-alive" : "close")\r\n"
+        text += "Cache-Control: no-store, max-age=0\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nX-Frame-Options: DENY\r\n"
         for (key, value) in headers { text += "\(key): \(value)\r\n" }
         text += "\r\n"
         var data = Data(text.utf8)
-        if !headOnly { data.append(body) }
+        if !headOnly && !streaming { data.append(body) }
+        return data
+    }
+}
+
+/// One persistent connection per viewer instead of one connection per frame. Viewers that poll
+/// still work, but they now reuse a kept-alive connection.
+public enum MJPEG {
+    public static let boundary = "screentaskframe"
+    public static let contentType = "multipart/x-mixed-replace; boundary=screentaskframe"
+    public static func part(_ jpeg: Data) -> Data {
+        var data = Data("--\(boundary)\r\nContent-Type: image/jpeg\r\nContent-Length: \(jpeg.count)\r\n\r\n".utf8)
+        data.append(jpeg)
+        data.append(Data("\r\n".utf8))
         return data
     }
 }
@@ -65,6 +84,10 @@ public struct Router {
         }
         switch request.path {
         case "/", "/index.html": return HTTPResponse(200, type: "text/html; charset=utf-8", body: html)
+        case "/stream.mjpg":
+            var response = HTTPResponse(200, type: MJPEG.contentType)
+            response.streaming = true
+            return response
         case "/ScreenTask.jpg", "/frame.jpg":
             guard let jpeg else { return HTTPResponse(503, body: Data("Waiting for screen capture".utf8)) }
             return HTTPResponse(200, type: "image/jpeg", body: jpeg)

@@ -17,7 +17,7 @@ final class HTTPTests {
     }
     func testAuthenticationProtectsEveryRoute() {
         let router = Router(html: Data(), username: "名字", password: "密碼:more")
-        for path in ["/", "/index.html", "/ScreenTask.jpg", "/frame.jpg", "/unknown"] {
+        for path in ["/", "/index.html", "/ScreenTask.jpg", "/frame.jpg", "/stream.mjpg", "/unknown"] {
             for bad in ["", "Authorization: Basic !!!\r\n", "Authorization: Bearer xxx\r\n", "Authorization: Basic \(Data("名字:wrong".utf8).base64EncodedString())\r\n"] {
                 let result = router.response(to: request(path, headers: bad), jpeg: Data())
                 XCTAssertEqual(result.status, 401)
@@ -39,6 +39,27 @@ final class HTTPTests {
         XCTAssertTrue(header.contains("Cache-Control: no-store"))
         XCTAssertTrue(response.encoded().suffix(3) == Data([1,2,3]))
         XCTAssertEqual(response.encoded().count, response.encoded(headOnly: true).count + 3)
+    }
+    func testKeepAliveFraming() {
+        let response = HTTPResponse(200, type: "image/jpeg", body: Data([1, 2, 3]))
+        let alive = String(data: response.encoded(keepAlive: true), encoding: .utf8)!
+        XCTAssertTrue(alive.contains("Connection: keep-alive\r\n"))
+        XCTAssertTrue(alive.contains("Content-Length: 3\r\n"))
+        XCTAssertTrue(String(data: response.encoded(), encoding: .utf8)!.contains("Connection: close\r\n"))
+    }
+    func testStreamRouteAndMultipartFraming() {
+        let router = Router(html: Data("viewer".utf8))
+        let response = router.response(to: request("/stream.mjpg?t=1"), jpeg: nil)
+        XCTAssertEqual(response.status, 200)
+        XCTAssertTrue(response.streaming)
+        XCTAssertTrue(response.type.contains("multipart/x-mixed-replace"))
+        // A stream has no Content-Length and must never be advertised as reusable.
+        let header = String(data: response.encoded(keepAlive: true), encoding: .utf8)!
+        XCTAssertFalse(header.contains("Content-Length"))
+        let jpeg = Data([0xff, 0xd8, 0xff, 0xd9])
+        let part = MJPEG.part(jpeg)
+        XCTAssertTrue(part.starts(with: Data("--\(MJPEG.boundary)\r\nContent-Type: image/jpeg\r\nContent-Length: 4\r\n\r\n".utf8)))
+        XCTAssertEqual(Data(part.suffix(6)), jpeg + Data("\r\n".utf8))
     }
     func testSubnetRestrictionAndExplicitPublicMode() {
         XCTAssertTrue(LANScope.allows(peer: "192.168.1.20", address: "192.168.1.10", mask: "255.255.255.0", publicAccess: false))
@@ -63,7 +84,9 @@ func XCTAssertNotNil<T>(_ value: T?, file: StaticString = #file, line: UInt = #l
   tests.testAuthenticationProtectsEveryRoute()
   tests.testMalformedRequestsAreRejected()
   tests.testResponseFramingAndHead()
+  tests.testKeepAliveFraming()
+  tests.testStreamRouteAndMultipartFraming()
   tests.testSubnetRestrictionAndExplicitPublicMode()
-  print("All tests passed: 5 regression groups")
+  print("All tests passed: 7 regression groups")
  }
 }

@@ -7,14 +7,63 @@
 <main><div id="stage"><img id="screen" alt="分享中的 Mac 螢幕" hidden><div id="message">等待分享畫面…</div><button id="exit" aria-label="離開全螢幕">離開全螢幕</button></div>
 <div class="controls"><button id="toggle">暫停觀看</button><button id="fullscreen">全螢幕</button><button id="fit">原始大小</button><label for="interval">更新間隔（毫秒）</label><input id="interval" type="number" min="50" max="10000" step="50" value="150"><button id="apply">套用</button></div></main>
 <footer>ScreenTask Mac · GPL-3.0-or-later · Inspired by <a href="https://github.com/EslaMx7/ScreenTask" target="_blank" rel="noopener noreferrer">ScreenTask</a>
-<details><summary>關於與連線說明</summary><p>同一個區域網路即可觀看。暫停僅影響這個瀏覽器；分享者停止後將自動重試。HTTP 傳輸未加密，請使用可信任的網路。部分手機瀏覽器以滿版模式代替全螢幕。</p></details></footer>
+<details><summary>關於與連線說明</summary><p>同一個區域網路即可觀看。預設以單一長連線串流，更新速度由分享端的擷取間隔決定，因此「更新間隔」欄位停用；瀏覽器不支援串流時會自動改為逐張更新，此時該欄位才會生效。暫停僅影響這個瀏覽器；分享者停止後將自動重試。HTTP 傳輸未加密，請使用可信任的網路。部分手機瀏覽器以滿版模式代替全螢幕。</p></details></footer>
 <script>
 'use strict';
-const screenImage=document.getElementById('screen'),statusLabel=document.getElementById('status'),message=document.getElementById('message'),stage=document.getElementById('stage');
+let screenImage=document.getElementById('screen');
+const statusLabel=document.getElementById('status'),message=document.getElementById('message'),stage=document.getElementById('stage');
+const intervalInput=document.getElementById('interval'),applyButton=document.getElementById('apply');
 let watching=true,interval=150,timer=null,controller=null,objectURL=null,generation=0;
-function schedule(ms){clearTimeout(timer);if(watching&&!document.hidden)timer=setTimeout(load,ms)}
+let mode='stream',streamGeneration=0,watchdog=null,streamed=false,proven=false,retry=null,heartbeat=null,upgrade=null;
+function show(){screenImage.hidden=false;message.hidden=true}
+function warn(text){screenImage.hidden=true;message.hidden=false;message.textContent=text;statusLabel.textContent='等待重新連線'}
+function dropObjectURL(){if(objectURL){URL.revokeObjectURL(objectURL);objectURL=null}}
+/* Dropping a multipart stream takes all three: clearing src (Chromium), replacing the element, and
+   window.stop() — Safari keeps fetching frames on a paused viewer without that last one. */
+function resetImage(){
+ const stale=screenImage;stale.onload=null;stale.onerror=null;
+ const fresh=document.createElement('img');fresh.id='screen';fresh.alt=stale.alt;
+ fresh.className=stale.className;fresh.hidden=true;
+ stale.replaceWith(fresh);stale.removeAttribute('src');window.stop();screenImage=fresh;dropObjectURL();
+}
+function setMode(next){mode=next;intervalInput.disabled=next==='stream';applyButton.disabled=next==='stream';intervalInput.title=next==='stream'?'串流模式的更新速度由分享端的擷取間隔決定':''}
+/* Stream mode keeps one multipart/x-mixed-replace connection open for the whole session. A dying
+   stream fires no error on the <img> in Chromium or WebKit, so a light heartbeat notices the drop. */
+function startStream(){
+ const current=++streamGeneration;streamed=false;clearTimeout(watchdog);clearTimeout(retry);clearTimeout(upgrade);
+ screenImage.onload=()=>{if(current!==streamGeneration)return;streamed=proven=true;clearTimeout(watchdog);show();statusLabel.textContent='● 正在觀看（串流）'};
+ screenImage.onerror=()=>{if(current!==streamGeneration)return;fallback()};
+ screenImage.src='/stream.mjpg?t='+Date.now();
+ statusLabel.textContent='正在連線…';
+ watchdog=setTimeout(()=>{if(current===streamGeneration&&!streamed)fallback()},6000);
+ clearInterval(heartbeat);heartbeat=setInterval(beat,3000);
+}
+/* A stream that has already delivered frames is a dropped connection, not an unsupported browser. */
+function fallback(){if(proven)lost();else downgrade('這個瀏覽器無法使用串流，改用逐張更新…')}
+/* One HEAD every three seconds. It costs far less than polling frames and detects a stopped sharer.
+   503 is the sharer's own "no frame yet", which is a wait, not a disconnection. */
+async function beat(){
+ if(mode!=='stream'||!watching||document.hidden)return;
+ const current=streamGeneration;
+ const abort=new AbortController();const timeout=setTimeout(()=>abort.abort(),5000);
+ try{
+  const response=await fetch('/frame.jpg?t='+Date.now(),{method:'HEAD',cache:'no-store',signal:abort.signal});
+  if(current!==streamGeneration)return;
+  if(response.status===503){if(!streamed){message.textContent='等待分享畫面…';message.hidden=false;screenImage.hidden=true}return}
+  if(!response.ok)throw new Error(response.status);
+ }catch{if(current===streamGeneration)lost()}
+ finally{clearTimeout(timeout)}
+}
+function lost(){if(mode!=='stream'||!watching||document.hidden)return;stopStream();warn('分享已停止或網路中斷，正在重試…');retry=setTimeout(()=>{if(watching&&!document.hidden&&mode==='stream')startStream()},2000)}
+function stopStream(){streamGeneration++;clearTimeout(watchdog);clearTimeout(retry);clearInterval(heartbeat);heartbeat=null;screenImage.onload=null;screenImage.onerror=null;resetImage()}
+/* Polling is the fallback, not a verdict: an outage at page load must not pin the page to it forever. */
+function downgrade(text){stopStream();setMode('poll');warn(text);load();clearTimeout(upgrade);upgrade=setTimeout(retryStream,30000)}
+function retryStream(){if(mode!=='poll'||!watching||document.hidden){upgrade=setTimeout(retryStream,30000);return}
+ generation++;clearTimeout(timer);controller?.abort();controller=null;setMode('stream');startStream()}
+/* Polling fallback. Requests reuse one kept-alive connection instead of opening one per frame. */
+function schedule(ms){clearTimeout(timer);if(watching&&!document.hidden&&mode==='poll')timer=setTimeout(load,ms)}
 async function load(){
- if(!watching||document.hidden)return;
+ if(!watching||document.hidden||mode!=='poll')return;
  const current=++generation;controller=new AbortController();const timeout=setTimeout(()=>controller?.abort(),8000);
  try{
   const response=await fetch('/ScreenTask.jpg?t='+Date.now(),{cache:'no-store',signal:controller.signal});
@@ -22,18 +71,27 @@ async function load(){
   const blob=await response.blob();if(current!==generation||!watching)return;
   const next=URL.createObjectURL(blob);const old=objectURL;objectURL=next;screenImage.src=next;
   if(old)URL.revokeObjectURL(old);
-  screenImage.hidden=false;message.hidden=true;statusLabel.textContent='● 正在觀看';schedule(interval);
- }catch(error){if(current!==generation||!watching)return;screenImage.hidden=true;message.hidden=false;message.textContent=error.name==='AbortError'?'連線逾時，正在重試…':error instanceof TypeError?'分享已停止或網路中斷，正在重試…':error.message;statusLabel.textContent='等待重新連線';schedule(2000)}
+  show();statusLabel.textContent='● 正在觀看（逐張）';schedule(interval);
+ }catch(error){if(current!==generation||!watching)return;warn(error.name==='AbortError'?'連線逾時，正在重試…':error instanceof TypeError?'分享已停止或網路中斷，正在重試…':error.message);schedule(2000)}
  finally{clearTimeout(timeout);if(current===generation)controller=null}
 }
-function cancel(){generation++;clearTimeout(timer);controller?.abort();controller=null}
-document.getElementById('toggle').onclick=event=>{watching=!watching;cancel();event.currentTarget.textContent=watching?'暫停觀看':'繼續觀看';statusLabel.textContent=watching?'正在連線…':'已暫停';if(watching)load()};
-document.getElementById('apply').onclick=()=>{const input=document.getElementById('interval');const value=Number(input.value);if(!Number.isFinite(value)||value<50||value>10000){input.setCustomValidity('請輸入 50 到 10000 毫秒');input.reportValidity();return}input.setCustomValidity('');interval=Math.round(value)};
-document.getElementById('interval').oninput=event=>event.target.setCustomValidity('');
+function begin(){
+ if(!watching||document.hidden)return;
+ message.textContent='等待分享畫面…';
+ if(mode==='stream'){startStream();return}
+ load();clearTimeout(upgrade);upgrade=setTimeout(retryStream,30000);
+}
+function halt(){generation++;clearTimeout(timer);clearTimeout(upgrade);controller?.abort();controller=null;stopStream()}
+document.getElementById('toggle').onclick=event=>{watching=!watching;halt();event.currentTarget.textContent=watching?'暫停觀看':'繼續觀看';statusLabel.textContent=watching?'正在連線…':'已暫停';if(watching){begin()}else{message.textContent='已暫停觀看，按「繼續觀看」接回畫面';message.hidden=false}};
+applyButton.onclick=()=>{const value=Number(intervalInput.value);if(!Number.isFinite(value)||value<50||value>10000){intervalInput.setCustomValidity('請輸入 50 到 10000 毫秒');intervalInput.reportValidity();return}intervalInput.setCustomValidity('');interval=Math.round(value)};
+intervalInput.oninput=event=>event.target.setCustomValidity('');
 document.getElementById('fit').onclick=event=>{screenImage.classList.toggle('actual');event.currentTarget.textContent=screenImage.classList.contains('actual')?'符合視窗':'原始大小'};
 document.getElementById('fullscreen').onclick=async()=>{try{if(stage.requestFullscreen)await stage.requestFullscreen();else stage.classList.add('expanded')}catch{stage.classList.add('expanded')}};
 function exit(){stage.classList.remove('expanded');if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}
 document.getElementById('exit').onclick=exit;document.addEventListener('keydown',event=>{if(event.key==='Escape')exit()});
-document.addEventListener('visibilitychange',()=>{cancel();if(!document.hidden&&watching)load()});
-window.addEventListener('pagehide',()=>{cancel();if(objectURL)URL.revokeObjectURL(objectURL)});load();
+document.addEventListener('visibilitychange',()=>{halt();if(!document.hidden&&watching)begin()});
+window.addEventListener('pagehide',()=>{halt();dropObjectURL()});
+/* Back-navigation on iOS restores the page from the bfcache without a visibilitychange. */
+window.addEventListener('pageshow',event=>{if(event.persisted&&watching&&!document.hidden)begin()});
+setMode('stream');begin();
 </script></body></html>

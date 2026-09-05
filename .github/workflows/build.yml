@@ -15,6 +15,11 @@ jobs:
         run: bash scripts/build-app.sh
       - name: HTTP integration tests
         run: python3 scripts/smoke-test.py
+      - name: Viewer browser tests
+        run: |
+          python3 -m pip install --quiet --break-system-packages playwright
+          python3 -m playwright install chromium webkit
+          SCREENTASK_VIEWER_ENGINES=chromium,webkit python3 scripts/viewer-test.py
       - uses: actions/upload-artifact@v7
         with:
           name: ScreenTaskMac-arm64

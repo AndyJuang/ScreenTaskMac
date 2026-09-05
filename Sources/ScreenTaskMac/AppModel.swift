@@ -28,6 +28,16 @@ import ScreenTaskCore
         refreshNetwork()
         // Query displays only after permission is already granted; first launch stays quiet.
         if CGPreflightScreenCaptureAccess() { await refreshDisplays() }
+        // The install prompt is up or a relaunch from /Applications is under way. Autostarting now
+        // would bind the port and capture from the bundle this release exists to move away from.
+        guard !Relocator.relocating else {
+            Relocator.resume = { [weak self] in Task { @MainActor in await self?.autoStart() } }
+            return
+        }
+        await autoStart()
+    }
+    /// Autostart and minimize, once nothing is waiting on the install prompt.
+    private func autoStart() async {
         if settings.autoStart {
             password = PasswordStore.load()
             await start()

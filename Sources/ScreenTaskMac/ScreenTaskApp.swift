@@ -3,7 +3,15 @@ import SwiftUI
 import AppKit
 import ScreenTaskCore
 
+/// Offers the move to /Applications once AppKit is up, before the app starts listening.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        _ = MainActor.assumeIsolated { Relocator.offerInstall() }
+    }
+}
+
 @main struct ScreenTaskApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var model = AppModel()
     init() {
         if CommandLine.arguments.contains("--smoke-server") { SmokeServer.run() }
@@ -70,6 +78,15 @@ struct ContentView: View {
                     }
                     Toggle("顯示滑鼠游標", isOn: $model.settings.cursor)
                 }
+                if Relocator.canInstall {
+                    Section("安裝位置") {
+                        Text(Relocator.isTranslocated
+                             ? "目前執行的是 macOS 的唯讀隔離副本（App Translocation），建議安裝到「應用程式」再使用。"
+                             : "目前不是從「應用程式」執行，建議安裝到「應用程式」再使用。")
+                            .font(.callout).foregroundStyle(.secondary)
+                        Button("安裝到「應用程式」並重新開啟") { Relocator.offerInstall(force: true) }
+                    }
+                }
                 Section("存取與啟動") {
                     Toggle("私人分享（帳號與密碼）", isOn: $model.settings.privateSession)
                     if model.settings.privateSession {
@@ -116,13 +133,23 @@ enum SmokeServer {
         let html = (try? Data(contentsOf: ViewerResource.url)) ?? Data()
         let privateMode = args.contains("--private")
         let server = HTTPServer(address: "127.0.0.1", mask: "255.0.0.0", publicAccess: false, router: Router(html: html, username: privateMode ? "tester" : nil, password: privateMode ? "test-only" : nil))
-        let image = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 32, pixelsHigh: 24, bitsPerSample: 8, samplesPerPixel: 3, hasAlpha: false, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
-        for y in 0..<24 { for x in 0..<32 { image.setColor(NSColor(deviceRed: 0.2, green: 0.7, blue: 0.6, alpha: 1), atX: x, y: y) } }
-        server.publish(image.representation(using: .jpeg, properties: [:])!)
+        // Two visibly different frames, so a viewer test can tell a live stream from a stuck image.
+        let frames = [NSColor(deviceRed: 0.2, green: 0.7, blue: 0.6, alpha: 1), NSColor(deviceRed: 0.9, green: 0.4, blue: 0.1, alpha: 1)].map { color -> Data in
+            let image = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 32, pixelsHigh: 24, bitsPerSample: 8, samplesPerPixel: 3, hasAlpha: false, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+            for y in 0..<24 { for x in 0..<32 { image.setColor(color, atX: x, y: y) } }
+            return image.representation(using: .jpeg, properties: [:])!
+        }
+        server.publish(frames[0])
+        // Republish so the multipart stream emits successive parts, as a live capture would.
+        let ticker = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "ScreenTask.smoke"))
+        var tick = 0
+        ticker.schedule(deadline: .now() + .milliseconds(100), repeating: .milliseconds(100))
+        ticker.setEventHandler { tick += 1; server.publish(frames[tick % frames.count]) }
+        ticker.resume()
         Task {
             do { try await server.start(port: port); print("SMOKE READY") }
             catch { fputs("Smoke listener failed\n", stderr); exit(1) }
         }
-        withExtendedLifetime(server) { dispatchMain() }
+        withExtendedLifetime((server, ticker)) { dispatchMain() }
     }
 }
