@@ -1,0 +1,23 @@
+name: Build and verify macOS
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Core regression tests
+        run: swift run --disable-sandbox ScreenTaskCoreTests
+      - name: Build arm64 app
+        run: bash scripts/build-app.sh
+      - name: HTTP integration tests
+        run: python3 scripts/smoke-test.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScreenTaskMac-arm64
+          path: |
+            dist/*.zip
+            dist/SHA256SUMS.txt

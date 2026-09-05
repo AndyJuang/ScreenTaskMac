@@ -1,0 +1,19 @@
+ScreenTask Mac
+Copyright (C) 2026 AndyJuang
+SPDX-License-Identifier: GPL-3.0-or-later
+
+This is an independent native macOS implementation inspired by ScreenTask.
+Upstream: https://github.com/EslaMx7/ScreenTask
+Reference commit: dfb46e1bd6cb2c56dba6e3495204e241e64202e9
+Reference retrieval: 2026-09-05
+Upstream authors credited by its web viewer: Eslam Hamouda and Wagih ElBedeawi.
+Upstream README states GPL v3 or later.
+
+Swift and viewer source were newly written. No upstream artwork, Bootstrap,
+or Windows source files are redistributed. This project is not affiliated
+with or endorsed by the upstream project.
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option)
+any later version. Distributed WITHOUT ANY WARRANTY; see LICENSE.
