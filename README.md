@@ -1,12 +1,14 @@
 # ScreenTask Mac
 
+<img src="Assets/AppIcon-Source.png" width="168" alt="ScreenTask Mac 圖示">
+
 **讓 Apple Silicon Mac 在區域網路分享螢幕，觀看者只需瀏覽器。**
 
 以 [EslaMx7/ScreenTask](https://github.com/EslaMx7/ScreenTask) Windows 版為功能參考的獨立 macOS 移植。使用 SwiftUI、ScreenCaptureKit、Network.framework，無第三方套件、無雲端帳號、分享時不需網際網路。
 
 ## 下載與使用
 
-1. 到 [Releases](https://github.com/AndyJuang/ScreenTaskMac/releases) 下載 `ScreenTaskMac-0.1.1-arm64.zip`。
+1. 到 [Releases](https://github.com/AndyJuang/ScreenTaskMac/releases) 下載 `ScreenTaskMac-0.1.2-arm64.zip`。
 2. 解壓縮，將 **ScreenTask Mac.app** 拖到「應用程式」。適用 **M 系列處理器、macOS 13 Ventura 以上**。
 3. 開啟程式；首次使用請在「系統設定 → 隱私權與安全性 → 螢幕錄製」（較新系統稱「螢幕與系統音訊錄製」）允許 ScreenTask Mac，再結束並重新開啟。若出現區域網路或防火牆提示，請允許連入。
 4. 選擇螢幕及 Wi-Fi／乙太網路 IP，按「開始分享」。不要選 `127.0.0.1` 給其他裝置使用。
@@ -24,6 +26,7 @@
 - 選單列控制、開啟程式時自動分享／最小化、複製網址、執行紀錄。
 - 一般設定保存於 UserDefaults；密碼僅在勾選後，於開始分享時存入 macOS 鑰匙圈。未保存的密碼不寫入磁碟。
 - 可同時有多個觀看者，沒有授權人數限制；頻寬與硬體效能仍有限。
+- 專屬 macOS 圖示，內含完整 16–1024 px `.icns` 尺寸集，可在 Finder、Dock 與 Spotlight 正確顯示。
 
 完整對照與平台差異見 [功能對照表](docs/FEATURES.md)。本程式分享畫面，不含音訊、遠端操控、AirPlay 或網際網路穿透。
 

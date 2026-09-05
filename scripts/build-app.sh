@@ -12,13 +12,15 @@ fi
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 ICONSET="$PWD/.build/AppIcon.iconset"
 mkdir -p "$ICONSET"
-swift scripts/make-icon.swift "$PWD/.build/AppIcon.png"
+sips -z 1024 1024 "$PWD/Assets/AppIcon-Source.png" --out "$PWD/.build/AppIcon.png" >/dev/null
 for SIZE in 16 32 128 256 512; do
     sips -z "$SIZE" "$SIZE" "$PWD/.build/AppIcon.png" --out "$ICONSET/icon_${SIZE}x${SIZE}.png" >/dev/null
     DOUBLE=$((SIZE * 2))
     sips -z "$DOUBLE" "$DOUBLE" "$PWD/.build/AppIcon.png" --out "$ICONSET/icon_${SIZE}x${SIZE}@2x.png" >/dev/null
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+test -s "$APP/Contents/Resources/AppIcon.icns"
+echo 'ICON VERIFIED'
 cp "$BIN_DIR/ScreenTaskMac" "$APP/Contents/MacOS/ScreenTaskMac"
 # Place resources inside the signed app resource envelope.
 cp -R "$BIN_DIR/ScreenTaskMac_ScreenTaskMac.bundle" "$APP/Contents/Resources/"
@@ -32,8 +34,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleDisplayName</key><string>ScreenTask Mac</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.1.1</string>
-<key>CFBundleVersion</key><string>1</string>
+<key>CFBundleShortVersionString</key><string>0.1.2</string>
+<key>CFBundleVersion</key><string>2</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSLocalNetworkUsageDescription</key><string>讓同一個區域網路的瀏覽器觀看您選擇分享的螢幕。</string>
@@ -44,6 +46,6 @@ codesign --force --deep --sign - "$APP"
 codesign --verify --deep --strict "$APP"
 file "$APP/Contents/MacOS/ScreenTaskMac" | grep -q 'arm64'
 plutil -lint "$APP/Contents/Info.plist"
-ditto -c -k --sequesterRsrc --keepParent "$APP" "$PWD/dist/ScreenTaskMac-0.1.1-arm64.zip"
-(cd dist && shasum -a 256 ScreenTaskMac-0.1.1-arm64.zip > SHA256SUMS.txt)
+ditto -c -k --sequesterRsrc --keepParent "$APP" "$PWD/dist/ScreenTaskMac-0.1.2-arm64.zip"
+(cd dist && shasum -a 256 ScreenTaskMac-0.1.2-arm64.zip > SHA256SUMS.txt)
 echo 'APP VERIFIED'

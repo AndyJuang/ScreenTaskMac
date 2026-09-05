@@ -13,4 +13,4 @@ Notable corrections during validation:
 - Fixed CSS overriding the hidden attribute, so disconnected viewers hide old frames.
 - Limited incomplete request lifetime/size and active connections; authentication runs before route lookup.
 
-Release scope: 0.1.1, ad-hoc-signed arm64 app, source under GPL-3.0-or-later. Version 0.1.1 supersedes the initial 0.1.0 tag so the published tag includes the Swift 6 CI fix. Manual coverage limits remain documented rather than represented as verified.
+Release scope: 0.1.2, ad-hoc-signed arm64 app, source under GPL-3.0-or-later. Version 0.1.1 superseded the initial 0.1.0 tag so the published tag includes the Swift 6 CI fix. Version 0.1.2 adds the designed macOS app icon. Manual coverage limits remain documented rather than represented as verified.

@@ -22,3 +22,7 @@ Scope: Native Apple Silicon LAN screen sharing with upstream feature mapping, di
   EVIDENCE: GitHub API verified public repo AndyJuang/ScreenTaskMac, tag v0.1.1 exactly at commit 2cea031, published non-draft latest Release, arm64 ZIP digest 4072cb7d57eef3d4094593bab8b7171d810c04966861a11895e40b8ba842227c, checksum asset, and passing GitHub Actions run 33939408940.
 - [x] G6: Feature differences, setup, license and handoff are recorded
   EVIDENCE: README.md, docs/FEATURES.md, docs/VALIDATION.md, NOTICE, LICENSE, AI_MEMORY.md and tasks/2026-09-05-initial-port.md record usage, feature parity, limits, GPL attribution, architecture and handoff.
+- [x] G7: Designed ScreenTask icon is packaged as the app's complete macOS icon set
+  CHECK: bash scripts/build-app.sh
+  EXPECT: ICON VERIFIED
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/zhuangzheyun/claudeai知識庫/VIBE_開發專案/ScreenTaskMac; path=8d877d837201/38 entries; EXPECT=matched; output-sha256=33129a2629b6283379326dfd77556c09d1213e648e6c0d7a978b37c069e0d027; output-bytes=390
