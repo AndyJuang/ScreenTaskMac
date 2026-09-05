@@ -10,4 +10,4 @@
 - Resource bundles belong under Contents/Resources for code signing. ViewerResource locates installed resources without relying on the development checkout.
 - Test mode --smoke-server serves synthetic frames on loopback, never captures the user's screen.
 - Public repository: https://github.com/AndyJuang/ScreenTaskMac
-- v0.1.0 uses ad-hoc signing, no Developer ID/notarization. Do not describe as notarized.
+- v0.1.1 uses ad-hoc signing, no Developer ID/notarization. Do not describe as notarized.

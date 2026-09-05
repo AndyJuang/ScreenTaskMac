@@ -6,7 +6,7 @@
 
 ## 下載與使用
 
-1. 到 [Releases](https://github.com/AndyJuang/ScreenTaskMac/releases) 下載 `ScreenTaskMac-0.1.0-arm64.zip`。
+1. 到 [Releases](https://github.com/AndyJuang/ScreenTaskMac/releases) 下載 `ScreenTaskMac-0.1.1-arm64.zip`。
 2. 解壓縮，將 **ScreenTask Mac.app** 拖到「應用程式」。適用 **M 系列處理器、macOS 13 Ventura 以上**。
 3. 開啟程式；首次使用請在「系統設定 → 隱私權與安全性 → 螢幕錄製」（較新系統稱「螢幕與系統音訊錄製」）允許 ScreenTask Mac，再結束並重新開啟。若出現區域網路或防火牆提示，請允許連入。
 4. 選擇螢幕及 Wi-Fi／乙太網路 IP，按「開始分享」。不要選 `127.0.0.1` 給其他裝置使用。
