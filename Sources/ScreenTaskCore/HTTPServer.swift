@@ -2,6 +2,22 @@
 import Foundation
 import Network
 
+private final class StartupContinuation: @unchecked Sendable {
+    private var continuation: CheckedContinuation<Void, Error>?
+
+    init(_ continuation: CheckedContinuation<Void, Error>) {
+        self.continuation = continuation
+    }
+
+    @discardableResult
+    func resume(_ result: Result<Void, Error>) -> Bool {
+        guard let continuation else { return false }
+        self.continuation = nil
+        continuation.resume(with: result)
+        return true
+    }
+}
+
 /// All listener/connection/frame state is confined to queue. One immutable latest JPEG,
 /// no per-client frame queue, and bounded request lifetime limit slow-reader memory use.
 public final class HTTPServer: @unchecked Sendable {
@@ -27,16 +43,16 @@ public final class HTTPServer: @unchecked Sendable {
                     parameters.requiredLocalEndpoint = .hostPort(host: NWEndpoint.Host(self.address), port: NWEndpoint.Port(rawValue: port)!)
                     let listener = try NWListener(using: parameters)
                     self.listener = listener
-                    var pending: CheckedContinuation<Void, Error>? = continuation
+                    let startup = StartupContinuation(continuation)
                     listener.stateUpdateHandler = { [weak self] state in
                         switch state {
-                        case .ready: pending?.resume(); pending = nil
+                        case .ready:
+                            startup.resume(.success(()))
                         case .failed(let error):
-                            if let startup = pending { pending = nil; startup.resume(throwing: error) }
-                            else { self?.onFailure?(error) }
+                            if !startup.resume(.failure(error)) { self?.onFailure?(error) }
                             self?.stopOnQueue()
                         case .cancelled:
-                            pending?.resume(throwing: CancellationError()); pending = nil
+                            startup.resume(.failure(CancellationError()))
                         default: break
                         }
                     }
